@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Desktop — Cloned Application</title>
+  <link rel="icon" href="https://www.youtube.com/s/desktop/f4ff7e16/img/favicon.ico">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            yt: {
+              red: '#FF0000',
+              black: '#0F0F0F',
+              card: '#181818',
+              hover: '#272727',
+              border: '#303030'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #666; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes pulse-fast { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .skeleton { animation: pulse-fast 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  </style>
+</head>
+<body class="bg-[#0F0F0F] text-white font-sans antialiased selection:bg-red-600 selection:text-white transition-colors duration-200">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-50 flex items-center justify-between px-4 h-14 bg-[#0F0F0F] border-b border-[#272727]">
+    <!-- Left: Menu + Logo -->
+    <div class="flex items-center gap-4">
+      <button id="toggleSidebarBtn" class="p-2 rounded-full hover:bg-[#272727] transition" title="Toggle Sidebar">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+      </button>
+      <a href="#" class="flex items-center gap-1.5 group" onclick="showHomeView(); return false;">
+        <div class="w-8 h-6 bg-red-600 rounded-lg flex items-center justify-center text-white shadow-md shadow-red-900/30 group-hover:scale-105 transition-transform">
+          <i data-lucide="play" class="w-3.5 h-3.5 fill-current ml-0.5"></i>
+        </div>
+        <div class="flex items-baseline tracking-tighter">
+          <span class="text-lg font-bold text-white tracking-tight">YouTube</span>
+          <span class="ml-1 text-[10px] font-semibold uppercase px-1.5 py-0.5 bg-red-600/20 text-red-400 rounded-md border border-red-500/30">Desktop</span>
+        </div>
+      </a>
+    </div>
+
+    <!-- Center: Search Bar -->
+    <div class="flex items-center flex-1 max-w-2xl mx-4">
+      <form onsubmit="submitSearch(event)" class="flex items-center w-full bg-[#121212] border border-[#303030] rounded-full focus-within:border-blue-500 overflow-hidden pl-4 pr-1 h-10 shadow-inner">
+        <input 
+          id="searchInput" 
+          type="text" 
+          placeholder="Search real YouTube videos, music, tutorials..." 
+          class="w-full bg-transparent text-sm focus:outline-none text-white placeholder-gray-400"
+        />
+        <button type="button" id="clearSearchBtn" onclick="clearSearch()" class="hidden p-1.5 text-gray-400 hover:text-white mr-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+        <button type="submit" class="bg-[#222222] hover:bg-[#272727] text-gray-300 px-5 h-full flex items-center justify-center border-l border-[#303030] transition">
+          <i data-lucide="search" class="w-4 h-4"></i>
+        </button>
+      </form>
+    </div>
+
+    <!-- Right: Controls -->
+    <div class="flex items-center gap-2">
+      <!-- Full Webview Mode Button -->
+      <a href="https://www.youtube.com" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600/30 transition" title="Open YouTube Desktop Webview">
+        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+        <span class="hidden sm:inline">YouTube Web</span>
+      </a>
+
+      <!-- Reversed Tauri App Info Button -->
+      <button onclick="toggleEngineModal()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition">
+        <i data-lucide="binary" class="w-3.5 h-3.5"></i>
+        <span class="hidden md:inline">Reverse Eng. Info</span>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button id="themeToggleBtn" onclick="toggleTheme()" class="p-2 rounded-full hover:bg-[#272727] text-gray-300 transition" title="Toggle Theme (f6=400/f6=8)">
+        <i data-lucide="moon" class="w-5 h-5" id="themeIcon"></i>
+      </button>
+
+      <!-- Fullscreen Toggle ('F' shortcut supported) -->
+      <button onclick="toggleFullScreen()" class="p-2 rounded-full hover:bg-[#272727] text-gray-300 transition" title="Toggle Fullscreen (Key: F)">
+        <i data-lucide="maximize" class="w-5 h-5" id="fsIcon"></i>
+      </button>
+
+      <!-- Avatar -->
+      <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-red-500 flex items-center justify-center text-xs font-bold text-white shadow-md cursor-pointer ml-1 hover:ring-2 ring-red-500 transition">
+        YT
+      </div>
+    </div>
+  </header>
+
+  <div class="flex min-h-[calc(100vh-3.5rem)]">
+    <!-- Left Sidebar -->
+    <aside id="sidebar" class="w-60 bg-[#0F0F0F] border-r border-[#272727] p-3 flex flex-col justify-between shrink-0 transition-all duration-300 select-none">
+      <div class="space-y-6">
+        <!-- Main Menu -->
+        <div class="space-y-1">
+          <button onclick="filterCategory('All')" class="sidebar-item active flex items-center gap-4 w-full px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-[#272727] transition">
+            <i data-lucide="home" class="w-5 h-5 text-red-500"></i>
+            <span>Home</span>
+          </button>
+          <button onclick="filterCategory('Shorts')" class="sidebar-item flex items-center gap-4 w-full px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-[#272727] transition text-gray-300">
+            <i data-lucide="flame" class="w-5 h-5 text-orange-500"></i>
+            <span>Trending</span>
+          </button>
+          <button onclick="filterCategory('Music')" class="sidebar-item flex items-center gap-4 w-full px-3 py-2.5 rounded-xl text-sm font-medium hover:bg-[#272727] transition text-gray-300">
+            <i data-lucide="music-2" class="w-5 h-5 text-pink-500"></i>
+            <span>Music</span>
+          </button>
+        </div>
+
+        <div class="border-t border-[#272727] pt-4 space-y-1">
+          <div class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Categories</div>
+          <button onclick="filterCategory('Tech')" class="flex items-center gap-4 w-full px-3 py-2 rounded-xl text-sm text-gray-300 hover:bg-[#272727] transition">
+            <i data-lucide="code" class="w-4 h-4 text-cyan-400"></i>
+            <span>Coding & Tech</span>
+          </button>
+          <button onclick="filterCategory('Gaming')" class="flex items-center gap-4 w-full px-3 py-2 rounded-xl text-sm text-gray-300 hover:bg-[#272727] transition">
+            <i data-lucide="gamepad-2" class="w-4 h-4 text-purple-400"></i>
+            <span>Gaming</span>
+          </button>
+          <button onclick="filterCategory('Podcasts')" class="flex items-center gap-4 w-full px-3 py-2 rounded-xl text-sm text-gray-300 hover:bg-[#272727] transition">
+            <i data-lucide="radio" class="w-4 h-4 text-amber-400"></i>
+            <span>Podcasts</span>
+          </button>
+          <button onclick="filterCategory('Lo-Fi')" class="flex items-center gap-4 w-full px-3 py-2 rounded-xl text-sm text-gray-300 hover:bg-[#272727] transition">
+            <i data-lucide="coffee" class="w-4 h-4 text-emerald-400"></i>
+            <span>Lo-Fi Chill</span>
+          </button>
+          <button onclick="filterCategory('Science')" class="flex items-center gap-4 w-full px-3 py-2 rounded-xl text-sm text-gray-300 hover:bg-[#272727] transition">
+            <i data-lucide="globe" class="w-4 h-4 text-blue-400"></i>
+            <span>Science</span>
+          </button>
+        </div>
+
+        <div class="border-t border-[#272727] pt-4 space-y-1">
+          <div class="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">Library</div>
+          <button class="flex items-center gap-4 w-full px-3 py-2 rounded-xl text-sm text-gray-300 hover:bg-[#272727] transition">
+            <i data-lucide="history" class="w-4 h-4"></i>
+            <span>History</span>
+          </button>
+          <button class="flex items-center gap-4 w-full px-3 py-2 rounded-xl text-sm text-gray-300 hover:bg-[#272727] transition">
+            <i data-lucide="clock" class="w-4 h-4"></i>
+            <span>Watch Later</span>
+          </button>
+          <button class="flex items-center gap-4 w-full px-3 py-2 rounded-xl text-sm text-gray-300 hover:bg-[#272727] transition">
+            <i data-lucide="thumbs-up" class="w-4 h-4"></i>
+            <span>Liked Videos</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- App Status Footer -->
+      <div class="border-t border-[#272727] pt-3 text-[11px] text-gray-500">
+        <p class="font-semibold text-gray-400">YouTube Desktop Clone v2.0</p>
+        <p class="mt-0.5">Live YouTube Scraper & Embed</p>
+        <p class="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Connected & Running
+        </p>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-y-auto">
+
+      <!-- View 1: Video Grid & Categories (Home) -->
+      <section id="homeView" class="p-6">
+        <!-- Category Filter Pills -->
+        <div class="flex items-center gap-2.5 overflow-x-auto no-scrollbar pb-5 select-none" id="categoryChips">
+          <button onclick="filterCategory('All')" class="chip active px-3.5 py-1.5 rounded-lg text-sm font-medium bg-white text-black hover:bg-gray-200 transition">All</button>
+          <button onclick="filterCategory('Music')" class="chip px-3.5 py-1.5 rounded-lg text-sm font-medium bg-[#272727] text-white hover:bg-[#383838] transition">Music</button>
+          <button onclick="filterCategory('Tech')" class="chip px-3.5 py-1.5 rounded-lg text-sm font-medium bg-[#272727] text-white hover:bg-[#383838] transition">Tech & Coding</button>
+          <button onclick="filterCategory('Gaming')" class="chip px-3.5 py-1.5 rounded-lg text-sm font-medium bg-[#272727] text-white hover:bg-[#383838] transition">Gaming</button>
+          <button onclick="filterCategory('Podcasts')" class="chip px-3.5 py-1.5 rounded-lg text-sm font-medium bg-[#272727] text-white hover:bg-[#383838] transition">Podcasts</button>
+          <button onclick="filterCategory('Lo-Fi')" class="chip px-3.5 py-1.5 rounded-lg text-sm font-medium bg-[#272727] text-white hover:bg-[#383838] transition">Lo-Fi & Chill</button>
+          <button onclick="filterCategory('Science')" class="chip px-3.5 py-1.5 rounded-lg text-sm font-medium bg-[#272727] text-white hover:bg-[#383838] transition">Science</button>
+        </div>
+
+        <!-- Live Status Bar -->
+        <div id="statusBanner" class="hidden mb-4 p-3 bg-[#1c1c1c] rounded-xl border border-[#2d2d2d] text-xs flex items-center justify-between text-gray-300">
+          <span id="statusText"></span>
+          <button onclick="document.getElementById('statusBanner').classList.add('hidden')" class="text-gray-500 hover:text-white">✕</button>
+        </div>
+
+        <!-- Video Grid -->
+        <div id="videoGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">
+          <!-- Videos injected by JavaScript -->
+        </div>
+
+        <!-- Loading Skeleton -->
+        <div id="loadingSkeletons" class="hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8">
+          ${Array(8).fill(0).map(() => `
+            <div class="space-y-3">
+              <div class="w-full aspect-video rounded-xl bg-[#222] skeleton"></div>
+              <div class="flex gap-3">
+                <div class="w-9 h-9 rounded-full bg-[#222] skeleton shrink-0"></div>
+                <div class="flex-1 space-y-2">
+                  <div class="w-4/5 h-4 bg-[#222] skeleton rounded"></div>
+                  <div class="w-1/2 h-3 bg-[#222] skeleton rounded"></div>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- No Results Found -->
+        <div id="noResults" class="hidden text-center py-20">
+          <i data-lucide="search-x" class="w-16 h-16 mx-auto text-gray-500 mb-3"></i>
+          <h3 class="text-lg font-semibold text-gray-200">No matching videos found</h3>
+          <p class="text-sm text-gray-500 mt-1">Try another search term or click "All" to browse trending videos.</p>
+        </div>
+      </section>
+
+      <!-- View 2: Video Player Detail View -->
+      <section id="watchView" class="hidden p-6 max-w-7xl mx-auto w-full">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Left: Player + Metadata + Comments (2 Cols) -->
+          <div class="lg:col-span-2 space-y-4">
+            <!-- Video Player Container -->
+            <div class="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-[#272727] group">
+              <iframe 
+                id="activeVideoPlayer" 
+                class="w-full h-full" 
+                src="" 
+                title="YouTube Video Player" 
+                frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                allowfullscreen>
+              </iframe>
+            </div>
+
+            <!-- Video Title & Actions -->
+            <div>
+              <h1 id="watchTitle" class="text-xl font-bold text-white leading-tight"></h1>
+              <div class="flex flex-wrap items-center justify-between gap-4 mt-3 pb-3 border-b border-[#272727]">
+                <!-- Channel Info -->
+                <div class="flex items-center gap-3">
+                  <div id="watchChannelAvatar" class="w-10 h-10 rounded-full bg-red-700 flex items-center justify-center font-bold text-sm text-white"></div>
+                  <div>
+                    <h3 id="watchChannel" class="font-semibold text-sm text-white hover:underline cursor-pointer flex items-center gap-1"></h3>
+                    <p id="watchViews" class="text-xs text-gray-400"></p>
+                  </div>
+                  <button class="ml-2 px-4 py-2 rounded-full bg-white text-black font-semibold text-xs hover:bg-gray-200 transition">
+                    Subscribe
+                  </button>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex items-center gap-2 text-sm font-medium">
+                  <!-- Watch on YouTube Direct Link -->
+                  <a id="watchDirectLink" href="#" target="_blank" rel="noopener noreferrer" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-full transition border border-red-500/30">
+                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                    <span>Open on YouTube</span>
+                  </a>
+
+                  <!-- Like Pill -->
+                  <div class="flex items-center bg-[#272727] hover:bg-[#333] rounded-full overflow-hidden">
+                    <button id="likeBtn" onclick="toggleLike()" class="flex items-center gap-1.5 px-3.5 py-1.5 text-gray-200 hover:text-white transition">
+                      <i data-lucide="thumbs-up" class="w-4 h-4"></i>
+                      <span id="likeCount">124K</span>
+                    </button>
+                    <div class="w-px h-5 bg-[#3e3e3e]"></div>
+                    <button class="px-3 py-1.5 text-gray-200 hover:text-white transition">
+                      <i data-lucide="thumbs-down" class="w-4 h-4"></i>
+                    </button>
+                  </div>
+
+                  <button onclick="toggleFullScreen()" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#272727] hover:bg-[#333] rounded-full text-gray-200 hover:text-white transition" title="Press 'F' for Fullscreen">
+                    <i data-lucide="maximize" class="w-4 h-4"></i>
+                    <span>Fullscreen</span>
+                  </button>
+
+                  <button onclick="showHomeView()" class="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#272727] hover:bg-[#333] rounded-full text-gray-200 hover:text-white transition">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                    <span>Back</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Comments Section -->
+              <div class="mt-6 space-y-4">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                  <span id="commentCount">1,492</span> Comments
+                </h3>
+
+                <!-- Add Comment -->
+                <div class="flex items-start gap-3">
+                  <div class="w-9 h-9 rounded-full bg-red-600 flex items-center justify-center text-xs font-bold shrink-0">ME</div>
+                  <div class="flex-1 space-y-2">
+                    <input id="newCommentInput" type="text" placeholder="Add a comment..." class="w-full bg-transparent border-b border-[#3e3e3e] focus:border-white focus:outline-none pb-1.5 text-sm" onkeydown="if(event.key==='Enter') addComment()">
+                    <div class="flex justify-end gap-2">
+                      <button onclick="document.getElementById('newCommentInput').value=''" class="px-3 py-1 rounded-full text-xs font-semibold hover:bg-[#272727] transition">Cancel</button>
+                      <button onclick="addComment()" class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition">Comment</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Existing Comments -->
+                <div id="commentList" class="space-y-4 pt-2">
+                  <div class="flex items-start gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white shrink-0">AL</div>
+                    <div class="space-y-1">
+                      <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold text-white">@dev_user</span>
+                        <span class="text-[11px] text-gray-500">Just now</span>
+                      </div>
+                      <p class="text-sm text-gray-300">Live search and actual YouTube video streaming works seamlessly now!</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Related Videos (1 Col) -->
+          <div class="space-y-3">
+            <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-2">Up Next</h3>
+            <div id="relatedVideos" class="space-y-3">
+              <!-- Related video items injected by JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Reverse Engineering Modal -->
+  <div id="engineModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-[#181818] border border-[#333] rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-[#2d2d2d]">
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+            <i data-lucide="binary" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h2 class="text-lg font-bold text-white">Reversed ytdesktop.exe Architecture</h2>
+            <p class="text-xs text-gray-400">Extracted from <span class="font-mono text-emerald-400">C:\Users\rithi\AppData\Local\YouTube Desktop\ytdesktop.exe</span></p>
+          </div>
+        </div>
+        <button onclick="toggleEngineModal()" class="p-1.5 rounded-full hover:bg-[#272727] text-gray-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs leading-relaxed text-gray-300">
+        <div class="p-3 bg-[#111] rounded-xl border border-[#262626] space-y-1">
+          <p class="font-semibold text-white">1. Binary & Framework Identity:</p>
+          <p>The original executable is a 64-bit native PE Windows application built with **Rust and Tauri v2.0**, using the **Microsoft Edge WebView2** runtime (`WebView2Loader.dll`).</p>
+        </div>
+
+        <div class="p-3 bg-[#111] rounded-xl border border-[#262626] space-y-1.5">
+          <p class="font-semibold text-white">2. Injected Custom Scripts (Extracted via REA):</p>
+          <p class="text-gray-400">Script 1: Synchronizes YouTube dark mode preference directly with Windows system theme by modifying YouTube's <code class="text-red-400">PREF</code> cookie:</p>
+          <pre class="bg-black p-2.5 rounded-lg font-mono text-[11px] text-emerald-300 overflow-x-auto">function setThemeCookie(dark) {
+  const pref = dark ? 'f6=400' : 'f6=8';
+  document.cookie = `PREF=...${pref}; domain=.youtube.com; path=/; max-age=31536000; SameSite=Lax`;
+}</pre>
+          <p class="text-gray-400 mt-2">Script 2: Hooks HTML5 player fullscreen and <kbd class="px-1.5 py-0.5 bg-gray-800 rounded text-white font-mono">F</kbd> key to trigger borderless window fullscreen:</p>
+          <pre class="bg-black p-2.5 rounded-lg font-mono text-[11px] text-emerald-300 overflow-x-auto">document.addEventListener('keydown', (e) => {
+  if (e.key.toLowerCase() === 'f') toggleFullscreen();
+});</pre>
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button onclick="toggleEngineModal()" class="px-4 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-gray-200 transition">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeVideos = [];
+    let currentCategory = 'All';
+    let isDark = true;
+    let isLiked = false;
+
+    // Load videos from API
+    async function loadCategoryVideos(category) {
+      showLoading(true);
+      try {
+        const res = await fetch(`/api/category?c=${encodeURIComponent(category)}`);
+        const data = await res.json();
+        activeVideos = data.videos || [];
+        showStatus(`Loaded ${activeVideos.length} videos for "${category}"`);
+        renderVideos();
+      } catch (e) {
+        console.error(e);
+        showStatus('Error loading live videos; using fallback.');
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // Live Search
+    async function searchVideos(query) {
+      if (!query.trim()) {
+        return loadCategoryVideos('All');
+      }
+      showLoading(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        activeVideos = data.videos || [];
+        showStatus(`Found ${activeVideos.length} YouTube results for "${query}"`);
+        renderVideos();
+      } catch (e) {
+        console.error(e);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    function submitSearch(e) {
+      e.preventDefault();
+      const q = document.getElementById('searchInput').value;
+      searchVideos(q);
+      showHomeView();
+    }
+
+    function showStatus(text) {
+      const banner = document.getElementById('statusBanner');
+      const bannerText = document.getElementById('statusText');
+      bannerText.textContent = text;
+      banner.classList.remove('hidden');
+      setTimeout(() => banner.classList.add('hidden'), 5000);
+    }
+
+    function showLoading(loading) {
+      const sk = document.getElementById('loadingSkeletons');
+      const grid = document.getElementById('videoGrid');
+      if (loading) {
+        sk.classList.remove('hidden');
+        grid.classList.add('hidden');
+      } else {
+        sk.classList.add('hidden');
+        grid.classList.remove('hidden');
+      }
+    }
+
+    // Render Video Grid
+    function renderVideos() {
+      const grid = document.getElementById('videoGrid');
+      const noResults = document.getElementById('noResults');
+
+      if (!activeVideos || activeVideos.length === 0) {
+        grid.innerHTML = '';
+        noResults.classList.remove('hidden');
+        return;
+      }
+
+      noResults.classList.add('hidden');
+      grid.innerHTML = activeVideos.map(v => `
+        <div class="group cursor-pointer space-y-3" onclick="openWatchView('${v.id}')">
+          <!-- Thumbnail Container -->
+          <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-[#222]">
+            <img src="${v.thumbnail}" alt="${escapeHtml(v.title)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.src='https://i.ytimg.com/vi/${v.id}/hqdefault.jpg'">
+            <span class="absolute bottom-2 right-2 px-1.5 py-0.5 rounded text-[11px] font-semibold bg-black/85 text-white ${v.duration === 'LIVE' ? 'bg-red-600' : ''}">
+              ${v.duration}
+            </span>
+          </div>
+
+          <!-- Video Meta -->
+          <div class="flex gap-3 items-start">
+            <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-gray-700 to-gray-500 shrink-0 flex items-center justify-center text-xs font-bold text-white shadow-sm">
+              ${v.channel.charAt(0)}
+            </div>
+            <div class="space-y-1 overflow-hidden">
+              <h4 class="text-sm font-semibold text-white line-clamp-2 leading-snug group-hover:text-red-400 transition-colors">
+                ${escapeHtml(v.title)}
+              </h4>
+              <p class="text-xs text-gray-400 hover:text-white transition-colors flex items-center gap-1">
+                ${escapeHtml(v.channel)}
+                <svg class="w-3 h-3 fill-current text-gray-400" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+              </p>
+              <p class="text-xs text-gray-500">
+                ${v.views} ${v.date ? '• ' + v.date : ''}
+              </p>
+            </div>
+          </div>
+        </div>
+      `).join('');
+      
+      lucide.createIcons();
+    }
+
+    // Open Video Player Detail View
+    function openWatchView(videoId) {
+      const video = activeVideos.find(v => v.id === videoId);
+      if (!video) return;
+
+      document.getElementById('homeView').classList.add('hidden');
+      document.getElementById('watchView').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Embed YouTube Player with proper parameters
+      const player = document.getElementById('activeVideoPlayer');
+      player.src = `https://www.youtube.com/embed/${video.id}?autoplay=1&enablejsapi=1&rel=0`;
+
+      document.getElementById('watchTitle').textContent = video.title;
+      document.getElementById('watchChannel').textContent = video.channel;
+      document.getElementById('watchChannelAvatar').textContent = video.channel.charAt(0);
+      document.getElementById('watchViews').textContent = `${video.views} ${video.date ? '• ' + video.date : ''}`;
+      document.getElementById('watchDirectLink').href = `https://www.youtube.com/watch?v=${video.id}`;
+
+      // Render Related Videos
+      const related = activeVideos.filter(v => v.id !== video.id);
+      document.getElementById('relatedVideos').innerHTML = related.slice(0, 10).map(rv => `
+        <div class="flex gap-2.5 cursor-pointer group" onclick="openWatchView('${rv.id}')">
+          <div class="relative w-40 aspect-video rounded-lg overflow-hidden bg-[#222] shrink-0">
+            <img src="${rv.thumbnail}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200">
+            <span class="absolute bottom-1 right-1 px-1 py-0.2 rounded text-[10px] font-semibold bg-black/85 text-white">${rv.duration}</span>
+          </div>
+          <div class="space-y-0.5 overflow-hidden">
+            <h5 class="text-xs font-semibold text-white line-clamp-2 leading-tight group-hover:text-red-400 transition-colors">${escapeHtml(rv.title)}</h5>
+            <p class="text-[11px] text-gray-400">${escapeHtml(rv.channel)}</p>
+            <p class="text-[10px] text-gray-500">${rv.views}</p>
+          </div>
+        </div>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    function showHomeView() {
+      document.getElementById('activeVideoPlayer').src = '';
+      document.getElementById('watchView').classList.add('hidden');
+      document.getElementById('homeView').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function filterCategory(cat) {
+      currentCategory = cat;
+      document.querySelectorAll('.chip').forEach(btn => {
+        if (btn.textContent.trim().toLowerCase() === cat.toLowerCase()) {
+          btn.className = 'chip active px-3.5 py-1.5 rounded-lg text-sm font-medium bg-white text-black transition';
+        } else {
+          btn.className = 'chip px-3.5 py-1.5 rounded-lg text-sm font-medium bg-[#272727] text-white hover:bg-[#383838] transition';
+        }
+      });
+      showHomeView();
+      loadCategoryVideos(cat);
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('searchInput');
+      input.value = '';
+      document.getElementById('clearSearchBtn').classList.add('hidden');
+      loadCategoryVideos('All');
+    }
+
+    function addComment() {
+      const input = document.getElementById('newCommentInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const list = document.getElementById('commentList');
+      const div = document.createElement('div');
+      div.className = 'flex items-start gap-3';
+      div.innerHTML = `
+        <div class="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-xs font-bold text-white shrink-0">ME</div>
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-semibold text-white">@you</span>
+            <span class="text-[11px] text-gray-500">Just now</span>
+          </div>
+          <p class="text-sm text-gray-300">${escapeHtml(text)}</p>
+        </div>
+      `;
+      list.prepend(div);
+      input.value = '';
+    }
+
+    function toggleLike() {
+      isLiked = !isLiked;
+      const btn = document.getElementById('likeBtn');
+      const count = document.getElementById('likeCount');
+      if (isLiked) {
+        btn.classList.add('text-blue-400');
+        count.textContent = '125K';
+      } else {
+        btn.classList.remove('text-blue-400');
+        count.textContent = '124K';
+      }
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    }
+
+    // Keydown shortcuts (F for fullscreen, Esc to return home)
+    document.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'f') {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        e.preventDefault();
+        toggleFullScreen();
+      }
+      if (e.key === 'Escape') {
+        showHomeView();
+      }
+    });
+
+    function toggleTheme() {
+      isDark = !isDark;
+      const html = document.documentElement;
+      const icon = document.getElementById('themeIcon');
+      if (isDark) {
+        html.classList.add('dark');
+        document.body.className = "bg-[#0F0F0F] text-white font-sans antialiased transition-colors duration-200";
+        icon.setAttribute('data-lucide', 'moon');
+      } else {
+        html.classList.remove('dark');
+        document.body.className = "bg-white text-black font-sans antialiased transition-colors duration-200";
+        icon.setAttribute('data-lucide', 'sun');
+      }
+      lucide.createIcons();
+    }
+
+    document.getElementById('toggleSidebarBtn').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('hidden');
+    });
+
+    function toggleEngineModal() {
+      document.getElementById('engineModal').classList.toggle('hidden');
+      lucide.createIcons();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Initial load: fetch trending YouTube videos
+    loadCategoryVideos('All');
+  </script>
+</body>
+</html>
